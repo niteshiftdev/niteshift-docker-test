@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine AS builder
+FROM golang:1.22 AS builder
 
 WORKDIR /app
 
@@ -8,8 +8,11 @@ RUN go mod download
 COPY main.go .
 RUN CGO_ENABLED=0 go build -o /healthcheck main.go
 
-FROM alpine:3.19
-RUN apk add --no-cache ca-certificates
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /healthcheck /healthcheck
 EXPOSE 9090
 CMD ["/healthcheck"]

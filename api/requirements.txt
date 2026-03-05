@@ -1,3 +1,5 @@
 flask==3.1.0
 redis==5.2.1
 mysqlclient==2.2.6
+psycopg2-binary==2.9.10
+pymemcache==4.0.0
