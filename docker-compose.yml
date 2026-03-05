@@ -1,0 +1,112 @@
+services:
+  # --- Pulled images (pre-built) ---
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mysql:
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: app
+      MYSQL_PASSWORD: apppass
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  nginx:
+    image: nginx:1.25-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      api:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
+
+  # --- Built images (custom Dockerfiles) ---
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      MYSQL_HOST: mysql
+      MYSQL_USER: app
+      MYSQL_PASSWORD: apppass
+      MYSQL_DATABASE: testdb
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      MYSQL_HOST: mysql
+      MYSQL_USER: app
+      MYSQL_PASSWORD: apppass
+      MYSQL_DATABASE: testdb
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  healthcheck:
+    build:
+      context: ./healthcheck
+      dockerfile: Dockerfile
+    ports:
+      - "9090:9090"
+    environment:
+      REDIS_ADDR: redis:6379
+      MYSQL_DSN: app:apppass@tcp(mysql:3306)/testdb
+      API_URL: http://api:5000/health
+      WORKER_URL: http://worker:3000/health
+    depends_on:
+      api:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
+
+volumes:
+  redis-data:
+  mysql-data:
