@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+START_TIME=$SECONDS
+
 echo "==> Pulling container images..."
 docker compose pull redis mysql nginx postgres memcached
 
@@ -17,6 +19,9 @@ if [ -z "${NITESHIFT_CACHE_BUILD:-}" ]; then
 
     echo "==> Starting all services..."
     docker compose up -d --wait
+
+    ELAPSED=$(( SECONDS - START_TIME ))
+    echo "==> All services ready in ${ELAPSED}s"
 
     echo ""
     echo "==> Checking data persistence (MySQL)..."
