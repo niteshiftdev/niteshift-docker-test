@@ -8,6 +8,13 @@ echo "==> Building custom images..."
 docker compose build api worker healthcheck
 
 if [ -z "${NITESHIFT_CACHE_BUILD:-}" ]; then
+    # On resume, containers may have stale network IDs from the previous
+    # suspend cycle (kernel network state is lost but container configs
+    # survive with docker data persistence). Tear down stale containers
+    # before starting fresh — named volumes are preserved.
+    echo "==> Removing stale containers (preserves volumes)..."
+    docker compose down --remove-orphans 2>/dev/null || true
+
     echo "==> Starting all services..."
     docker compose up -d --wait
 
