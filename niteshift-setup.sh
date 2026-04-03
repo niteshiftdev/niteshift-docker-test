@@ -1,6 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
+# BuildKit is unstable in this environment when a build step needs DNS/network access.
+# Default to the classic builder, but allow callers to override these explicitly.
+export DOCKER_BUILDKIT="${DOCKER_BUILDKIT:-0}"
+export COMPOSE_DOCKER_CLI_BUILD="${COMPOSE_DOCKER_CLI_BUILD:-0}"
+
 START_TIME=$SECONDS
 
 echo "==> Pulling container images..."
