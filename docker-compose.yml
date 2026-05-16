@@ -53,6 +53,11 @@ services:
     ports:
       - "11211:11211"
     command: memcached -m 64
+    healthcheck:
+      test: ["CMD-SHELL", "bash -ec '</dev/tcp/127.0.0.1/11211'"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   nginx:
     image: nginx:1.25
@@ -65,6 +70,13 @@ services:
         condition: service_healthy
       worker:
         condition: service_healthy
+      healthcheck:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/dashboard/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   # --- Built images (custom Dockerfiles, full base images) ---
 
@@ -133,6 +145,11 @@ services:
         condition: service_healthy
       worker:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
 volumes:
   redis-data:
